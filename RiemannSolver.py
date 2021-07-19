@@ -5,11 +5,12 @@ from scipy import optimize
 
 class RiemannSolver:
 
-    def __init__(self, v_t):
+    def __init__(self, v_x, t):
         self.gamma = 1.4
         self.tube_length = 10
         self.R = 287.05
-        self.v_t = v_t
+        self.v_x = v_x
+        self.t = t
 
         # Flow properties in region R
         self.p_r = 0.1
@@ -38,10 +39,10 @@ class RiemannSolver:
         self.rho_2 = self.calc_rho_2()
 
         # Flow properties in region 3
-        self.p_2 = self.p_1
-        self.velocity_2 = self.velocity_1
-        self.temp_2 = self.calc_temp_2()
-        self.rho_2 = self.calc_rho_2()
+        self.velocity_3 = self.calc_velocity_3()
+        self.p_3 = self.calc_p_3()
+        self.temp_3 = self.calc_temp_3()
+        self.rho_3 = self.calc_rho_3()
 
 
 
@@ -80,3 +81,19 @@ class RiemannSolver:
     def calc_rho_2(self):
         a = self.p_1 / self.p_l
         return self.temp_l * a ** (1 / self.gamma)
+
+    def calc_velocity_3(self):
+        return (2 / (self.gamma + 1)) * (self.a_l + self.v_x / self.t)
+
+    def calc_temp_3(self):
+        a = 1 - ((self.gamma - 1) / 2) * (self.velocity_3 / self.a_l)
+        return self.temp_l * a ** 2
+
+    def calc_rho_3(self):
+        a = 1 - ((self.gamma - 1) / 2) * (self.velocity_3 / self.a_l)
+        return self.rho_l * a ** (2 / (self.gamma - 1))
+
+    def calc_p_3(self):
+        a = 1 - ((self.gamma - 1) / 2) * (self.velocity_3 / self.a_l)
+        return self.p_l * a ** ((2 * self.gamma) / (self.gamma - 1))
+

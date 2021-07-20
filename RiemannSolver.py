@@ -56,6 +56,37 @@ class RiemannSolver:
         self.v_velocity = self.build_velocity()
         self.v_temp = self.build_temp()
 
+    def plot(self):
+        v_x = np.hstack((self.region_l, self.region_3, self.region_2, self.region_1, self.region_r))
+        plt.subplot(4, 1, 1)
+        plt.plot(v_x, self.v_p, markersize=4)
+        plt.legend(['time={}'.format(self.t)])
+        plt.ylabel('$Pressure$')
+        plt.xlabel('time [s]')
+        plt.grid(linestyle='dashed')
+
+        plt.subplot(4, 1, 2)
+        plt.plot(v_x, self.v_rho, markersize=4)
+        plt.legend(['time={}'.format(self.t)])
+        plt.ylabel('Density')
+        plt.xlabel('time [s]')
+        plt.grid(linestyle='dashed')
+
+        plt.subplot(4, 1, 3)
+        plt.plot(v_x, self.v_velocity, markersize=4)
+        plt.legend(['time={}'.format(self.t)])
+        plt.ylabel('Velocity')
+        plt.xlabel('time [s]')
+        plt.grid(linestyle='dashed')
+
+        plt.subplot(4, 1, 4)
+        plt.plot(v_x, self.v_temp, markersize=4)
+        plt.legend(['time={}'.format(self.t)])
+        plt.ylabel('Temperature')
+        plt.xlabel('time [s]')
+        plt.grid(linestyle='dashed')
+        plt.show()
+
     def build_rho(self):
         v_rho_l = np.ones(self.region_l.shape) * self.rho_l
         v_rho_2 = np.ones(self.region_2.shape) * self.rho_2
@@ -87,13 +118,18 @@ class RiemannSolver:
     def split_to_regions(self):
         x_l = -self.a_l * self.t
         region_l = self.v_x[self.v_x <= x_l]
+        region_l = np.hstack((region_l, x_l))
         x_3 = (self.velocity_2 - self.a_2) * self.t
-        region_3 = self.v_x[np.logical_and(x_l < self.v_x, self.v_x <= x_3)]
+        region_3 = self.v_x[np.logical_and(x_l <= self.v_x, self.v_x <= x_3)]
+        region_3 = np.hstack((x_l, region_3, x_3))
         x_2 = self.velocity_2 * self.t
-        region_2 = self.v_x[np.logical_and(x_3 < self.v_x, self.v_x <= x_2)]
+        region_2 = self.v_x[np.logical_and(x_3 <= self.v_x, self.v_x <= x_2)]
+        region_2 = np.hstack((x_3, region_2, x_2))
         x_1 = self.mach_s * self.t
-        region_1 = self.v_x[np.logical_and(x_2 < self.v_x, self.v_x <= x_1)]
-        region_r = self.v_x[x_1 < self.v_x]
+        region_1 = self.v_x[np.logical_and(x_2 <= self.v_x, self.v_x <= x_1)]
+        region_1 = np.hstack((x_2, region_1, x_1))
+        region_r = self.v_x[x_1 <= self.v_x]
+        region_r = np.hstack((x_1, region_r))
         return region_l, region_3, region_2, region_1, region_r
 
     def calc_speed_of_sound(self, temp):

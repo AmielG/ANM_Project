@@ -63,36 +63,37 @@ class RiemannSolver:
         self.v_velocity = self.build_velocity()
         self.v_temp = self.build_temp()
 
-    def plot(self):
+    def plot(self, to_show=True):
         v_x = np.hstack((self.region_l, self.region_3, self.region_2, self.region_1, self.region_r))
         plt.subplot(4, 1, 1)
-        plt.plot(v_x, self.v_p, markersize=4)
-        plt.legend(['time={}'.format(self.t)])
+        plt.plot(v_x, self.v_p, markersize=4, label='time={}'.format(self.t))
+        plt.legend()
         plt.ylabel('$Pressure$')
         plt.xlabel('x')
         plt.grid(linestyle='dashed')
 
         plt.subplot(4, 1, 2)
-        plt.plot(v_x, self.v_rho, markersize=4)
-        plt.legend(['time={}'.format(self.t)])
+        plt.plot(v_x, self.v_rho, markersize=4, label='time={}'.format(self.t))
+        plt.legend()
         plt.ylabel('Density')
         plt.xlabel('x')
         plt.grid(linestyle='dashed')
 
         plt.subplot(4, 1, 3)
-        plt.plot(v_x, self.v_velocity, markersize=4)
-        plt.legend(['time={}'.format(self.t)])
+        plt.plot(v_x, self.v_velocity, markersize=4, label='time={}'.format(self.t))
+        plt.legend()
         plt.ylabel('Velocity')
         plt.xlabel('x')
         plt.grid(linestyle='dashed')
 
         plt.subplot(4, 1, 4)
-        plt.plot(v_x, self.v_temp, markersize=4)
-        plt.legend(['time={}'.format(self.t)])
+        plt.plot(v_x, self.v_temp, markersize=4, label='time={}'.format(self.t))
+        plt.legend()
         plt.ylabel('Temperature')
         plt.xlabel('x')
         plt.grid(linestyle='dashed')
-        plt.show()
+        if to_show:
+            plt.show()
 
     def build_rho(self):
         v_rho_l = np.ones(self.region_l.shape) * self.rho_l

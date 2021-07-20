@@ -1,15 +1,17 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from mpmath.libmp.libelefun import machin
 from scipy import optimize
 
 
 class RiemannSolver:
 
-    def __init__(self, v_x, t):
+    def __init__(self, v_x, t, x_0=5):
         self.gamma = 1.4
         self.tube_length = 10
         self.R = 8.3145
         self.v_x = v_x
+        self.x_0 = x_0
         self.t = t
 
         # Flow properties in region R
@@ -26,14 +28,13 @@ class RiemannSolver:
         self.temp_l = self.calc_ideal_gas_temp(self.p_l, self.rho_l)
         self.a_l = self.calc_speed_of_sound(self.temp_l)
 
+        self.mach_s = self.calc_mach_s(1)
+
         # Flow properties in region 1
-        self.p_1 = self.calc_p_1(self.p_r * 2)
+        self.p_1 = self.calc_p_1()
         self.temp_1 = self.calc_temp_1()
         self.rho_1 = self.calc_rho_1()
         self.velocity_1 = self.calc_velocity_1()
-
-        self.velocity_s = self.calc_velocity_s()
-        self.mach_s = self.calc_mach_s()
 
         # Flow properties in region 2
         self.p_2 = self.p_1
@@ -116,16 +117,16 @@ class RiemannSolver:
         return np.hstack((v_temp_l, self.temp_3, v_temp_2, v_temp_1, v_temp_r))
 
     def split_to_regions(self):
-        x_l = -self.a_l * self.t
+        x_l = self.x_0-self.a_l * self.t
         region_l = self.v_x[self.v_x <= x_l]
         region_l = np.hstack((region_l, x_l))
-        x_3 = (self.velocity_2 - self.a_2) * self.t
+        x_3 = self.x_0 + (self.velocity_2 - self.a_2) * self.t
         region_3 = self.v_x[np.logical_and(x_l <= self.v_x, self.v_x <= x_3)]
         region_3 = np.hstack((x_l, region_3, x_3))
-        x_2 = self.velocity_2 * self.t
+        x_2 = self.x_0 + self.velocity_2 * self.t
         region_2 = self.v_x[np.logical_and(x_3 <= self.v_x, self.v_x <= x_2)]
         region_2 = np.hstack((x_3, region_2, x_2))
-        x_1 = self.mach_s * self.t
+        x_1 = self.x_0 + self.mach_s * self.t
         region_1 = self.v_x[np.logical_and(x_2 <= self.v_x, self.v_x <= x_1)]
         region_1 = np.hstack((x_2, region_1, x_1))
         region_r = self.v_x[x_1 <= self.v_x]
@@ -141,15 +142,19 @@ class RiemannSolver:
     def calc_velocity_s(self):
         return self.a_r * (1 + ((self.gamma + 1)/(2 * self.gamma)) * ((self.p_1 / self.p_r) - 1)) ** 0.5
 
-    def calc_mach_s(self):
-        return self.velocity_s / self.a_r
+    def calc_mach_s(self, mach_s_guess):
+        return optimize.newton(self.implicit_function_mach_s, mach_s_guess)
 
-    def calc_p_1(self, p_1_guss):
-        return optimize.newton(self.implicit_function_p_1, p_1_guss)
+    def calc_p_1(self):
+        a = (2*self.gamma*self.mach_s**2)/(self.gamma+1)
+        b = ((self.gamma - 1) / (self.gamma + 1))
+        return self.p_r * (a-b)
 
-    def implicit_function_p_1(self, p_1):
-        return p_1 - self.p_l * (1 - (self.gamma - 1) * (self.a_r / self.a_l) * ((p_1 / self.p_r) - 1) / (
-                4 * self.gamma ** 2 + 2 * self.gamma * (self.gamma + 1) * ((p_1 / self.p_r) - 1)))
+    def implicit_function_mach_s(self, mach_s):
+        a = self.p_r / self.p_l
+        b = ((self.gamma + 1)/(self.gamma - 1))
+        f = (1 / mach_s) - mach_s + self.a_l * b * (1 - (a*((2*self.gamma*mach_s**2)/(self.gamma+1)-1/b))**((self.gamma - 1)/(2*self.gamma)))
+        return f
 
     def calc_temp_1(self):
         a = self.p_1 / self.p_r
@@ -157,9 +162,9 @@ class RiemannSolver:
         return self.temp_r * a * ((a + b) / (1 + a * b))
 
     def calc_rho_1(self):
-        a = self.p_1 / self.p_r
-        b = (self.gamma + 1) / (self.gamma - 1)
-        return self.rho_r * ((1 + a * b) / (a + b))
+        a = 2 / ((self.gamma + 1) * self.mach_s ** 2)
+        b = ((self.gamma - 1) / (self.gamma + 1))
+        return self.rho_r / (a + b)
 
     def calc_velocity_1(self):
         a = self.p_1 / self.p_r
@@ -179,7 +184,7 @@ class RiemannSolver:
         return self.a_l * a ** -((self.gamma - 1) / (2 * self.gamma))
 
     def calc_velocity_3(self, v_x):
-        return (2 / (self.gamma + 1)) * (self.a_l + v_x / self.t)
+        return (2 / (self.gamma + 1)) * (self.a_l + (v_x - self.x_0) / self.t)
 
     def calc_temp_3(self):
         a = 1 - ((self.gamma - 1) / 2) * (self.velocity_3 / self.a_l)

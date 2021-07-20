@@ -8,7 +8,7 @@ class RiemannSolver:
     def __init__(self, v_x, t):
         self.gamma = 1.4
         self.tube_length = 10
-        self.R = 287.05
+        self.R = 8.3145
         self.v_x = v_x
         self.t = t
 
@@ -62,28 +62,28 @@ class RiemannSolver:
         plt.plot(v_x, self.v_p, markersize=4)
         plt.legend(['time={}'.format(self.t)])
         plt.ylabel('$Pressure$')
-        plt.xlabel('time [s]')
+        plt.xlabel('x')
         plt.grid(linestyle='dashed')
 
         plt.subplot(4, 1, 2)
         plt.plot(v_x, self.v_rho, markersize=4)
         plt.legend(['time={}'.format(self.t)])
         plt.ylabel('Density')
-        plt.xlabel('time [s]')
+        plt.xlabel('x')
         plt.grid(linestyle='dashed')
 
         plt.subplot(4, 1, 3)
         plt.plot(v_x, self.v_velocity, markersize=4)
         plt.legend(['time={}'.format(self.t)])
         plt.ylabel('Velocity')
-        plt.xlabel('time [s]')
+        plt.xlabel('x')
         plt.grid(linestyle='dashed')
 
         plt.subplot(4, 1, 4)
         plt.plot(v_x, self.v_temp, markersize=4)
         plt.legend(['time={}'.format(self.t)])
         plt.ylabel('Temperature')
-        plt.xlabel('time [s]')
+        plt.xlabel('x')
         plt.grid(linestyle='dashed')
         plt.show()
 
@@ -172,7 +172,7 @@ class RiemannSolver:
 
     def calc_rho_2(self):
         a = self.p_1 / self.p_l
-        return self.temp_l * a ** (1 / self.gamma)
+        return self.rho_l * a ** (1 / self.gamma)
 
     def calc_a_2(self):
         a = self.p_l / self.p_2

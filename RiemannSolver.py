@@ -9,7 +9,7 @@ class RiemannSolver:
     def __init__(self, v_x, t, x_0=5):
         self.gamma = 1.4
         self.tube_length = 10
-        self.R = 8.3145
+        self.R = 287.05  # Specific gas constant for air
         self.v_x = v_x
         self.x_0 = x_0
         self.t = t
@@ -51,6 +51,12 @@ class RiemannSolver:
         self.p_3 = self.calc_p_3()
         self.temp_3 = self.calc_temp_3()
         self.rho_3 = self.calc_rho_3()
+
+        # Smooth the transition between region l and region 3
+        self.velocity_2 = self.velocity_1 = self.velocity_3[-1]
+        self.p_2 = self.p_1 = self.p_3[-1]
+        self.temp_2 = self.temp_3[-1]
+        self.rho_2 = self.rho_3[-1]
 
         self.v_p = self.build_p()
         self.v_rho = self.build_rho()

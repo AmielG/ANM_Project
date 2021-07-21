@@ -4,12 +4,12 @@ import warnings
 
 
 class SWSolver:
-    def __init__(self):
+    def __init__(self, delta_t=0.01, n=81, to_plot=False):
         self.gamma = 1.4
         self.x_length = 10
-        self.n = 81
+        self.n = n
         self.delta_x = self.x_length / self.n
-        self.delta_t = 0.1  # [s]
+        self.delta_t = delta_t  # [s]
         self.v_x = np.arange(0, self.x_length + self.delta_x, self.delta_x)
 
         # Initial condition in region R
@@ -23,26 +23,26 @@ class SWSolver:
         u_l = 0
 
         self.is_subsonic_outflow = False
-        list_U = []
-        # Assuming the initial condition in x=0 is taking place for all the computation range.
+        self.list_U = []
         m_U_0_l = self.calc_U_i(u_l, rho_l, p_l) * np.ones([1, int((self.n + 1)/2)])
         m_U_0_r = self.calc_U_i(u_r, rho_r, p_r) * np.ones([1, int((self.n + 1)/2)])
         m_U_0 = np.hstack((m_U_0_l, m_U_0_r))
-        # if is_subsonic_outflow:
+        # if self.is_subsonic_outflow:
         #     m_U_0[:, sw.n] = sw.calc_U_i(174.6, rho_0, p_0).reshape(3)
         #     m_U_0[:, sw.n - 1] = sw.calc_U_i(174.6, rho_0, p_0).reshape(3)
-        list_U.append(m_U_0)
+        self.list_U.append(m_U_0)
         m_U_n = self.calc_U_np1_by_first_order_SW(m_U_0)
-        list_U.append(m_U_n)
-        for i in range(20):
+        self.list_U.append(m_U_n)
+        for i in range(150):
             m_U_np1 = self.calc_U_np1_by_first_order_SW(m_U_n)
-            list_U.append(m_U_np1)
+            self.list_U.append(m_U_np1)
             max_diff = np.max(np.abs((m_U_np1 - m_U_n) / self.delta_t), axis=1)
             print("{}: {}".format(i, max_diff))
             if np.all(max_diff < 0.01):
                 break
             m_U_n = m_U_np1
-        self.plot_u(list_U, "bla")
+        if to_plot:
+            self.plot_u(self.list_U, "bla")
 
     def calc_T(self, v_U):
         m_T = np.eye(3)
@@ -217,8 +217,8 @@ class SWSolver:
         plt.legend(labels)
         # plt.subplot(132)
         plt.figure(2)
-        plt.plot(self.v_x[:-1], m_U_n[1, :], marker='o')
-        plt.ylabel('M')
+        plt.plot(self.v_x[:-1], m_U_n[1, :] / m_U_n[0, :], marker='o')
+        plt.ylabel('V')
         plt.xlabel('x')
         plt.grid(linestyle='dashed')
         plt.legend(labels)
@@ -234,8 +234,8 @@ class SWSolver:
 
     def plot_u(self, list_U, fig_name, save_fig=False):
         labels = []
-        # slice = int(len(list_U)/9)
-        slice = 1
+        slice = int(len(list_U)/9)
+        # slice = 1
         for i, u_n in enumerate(list_U[::slice]):
             labels.append('n={}'.format(i*slice))
             self.plot(u_n, labels)

@@ -7,6 +7,13 @@ from scipy import optimize
 class RiemannSolver:
 
     def __init__(self, v_x, t, x_0=5):
+        """
+        Solve the exact solution for the Riemannn problem for a given time.
+        The solution is accessible in the internal variables: self.v_p, self.v_rho, self.v_velocity, self.v_temp
+        :param v_x: A row vector of the x axis grid.
+        :param t: Scalar. The desire solution time.
+        :param x_0: The position of the diaphragm.
+        """
         self.gamma = 1.4
         self.tube_length = 10
         self.R = 287.05  # Specific gas constant for air

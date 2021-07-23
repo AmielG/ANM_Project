@@ -4,7 +4,7 @@ import warnings
 
 
 class SWSolver:
-    def __init__(self, grid_x, delta_t, time_steps, to_plot=False):
+    def __init__(self, grid_x, delta_t, time_steps, first_order=True, to_plot=False):
         self.gamma = 1.4
         self.R = 287.05  # Specific gas constant for air
         self.x_length = 10
@@ -13,6 +13,7 @@ class SWSolver:
         self.delta_t = delta_t  # [s]
         self.v_x = np.arange(0, self.x_length + self.delta_x, self.delta_x)
         self.to_plot = to_plot
+        self.first_order = first_order
 
         # Initial condition in region R
         p_r = 0.1
@@ -24,19 +25,22 @@ class SWSolver:
         rho_l = 1
         u_l = 0
 
-        self.is_subsonic_outflow = False
         self.list_U = []
         m_U_0_l = self.calc_U_i(u_l, rho_l, p_l) * np.ones([1, int((self.n + 1)/2)])
         m_U_0_r = self.calc_U_i(u_r, rho_r, p_r) * np.ones([1, int((self.n + 1)/2)])
         m_U_0 = np.hstack((m_U_0_l, m_U_0_r))
-        # if self.is_subsonic_outflow:
-        #     m_U_0[:, sw.n] = sw.calc_U_i(174.6, rho_0, p_0).reshape(3)
-        #     m_U_0[:, sw.n - 1] = sw.calc_U_i(174.6, rho_0, p_0).reshape(3)
+
         self.list_U.append(m_U_0)
-        m_U_n = self.calc_U_np1_by_first_order_SW(m_U_0)
+        if first_order:
+            m_U_n = self.calc_U_np1_by_first_order_SW(m_U_0)
+        else:
+            m_U_n = self.calc_U_np1_by_second_order_SW(m_U_0)
         self.list_U.append(m_U_n)
         for i in range(time_steps):
-            m_U_np1 = self.calc_U_np1_by_first_order_SW(m_U_n)
+            if first_order:
+                m_U_np1 = self.calc_U_np1_by_first_order_SW(m_U_n)
+            else:
+                m_U_np1 = self.calc_U_np1_by_second_order_SW(m_U_n)
             self.list_U.append(self.format_u(m_U_np1))
             m_U_n = m_U_np1
         if to_plot:
@@ -149,13 +153,7 @@ class SWSolver:
             v_H = np.array([0, self.calc_p(m_U_n[:, i]), 0])
             m_U_np1[:, i] = m_U_n[:, i] - (self.delta_t / self.delta_x) * (v_E_p_i - v_E_p_im1 + v_E_m_ip1 - v_E_m_i)
 
-        if self.is_subsonic_outflow:
-            u_N = m_U_np1[1, self.n] / m_U_np1[0, self.n]
-            p = 2 * self.calc_p(m_U_np1[:, self.n - 1]) - self.calc_p(m_U_np1[:, self.n - 2])
-            rho = 2 * m_U_np1[0, self.n - 1] - m_U_np1[0, self.n - 2]
-            m_U_np1[:, self.n] = self.calc_U_i(u_N, rho, p).reshape(3)
-        else:
-            m_U_np1[:, self.n] = m_U_np1[:, self.n - 1]
+        m_U_np1[:, self.n] = m_U_np1[:, self.n - 1]
         return m_U_np1
 
     def calc_U_np1_by_second_order_SW(self, m_U_n):
@@ -170,18 +168,8 @@ class SWSolver:
             v_H = np.array([0, self.calc_p(m_U_n[:, i]), 0])
             m_U_np1[:, i] = m_U_n[:, i] - 0.5*(self.delta_t / self.delta_x) * (3 * v_E_p_i - 4 * v_E_p_im1 + v_E_p_im2 - v_E_m_ip2 + 4 * v_E_m_ip1 - 3*v_E_m_i)
 
-        if is_subsonic_outflow:
-            u_Nm1 = m_U_np1[1, self.n - 1] / m_U_np1[0, self.n - 1]
-            p = 2 * self.calc_p(m_U_np1[:, self.n - 2]) - self.calc_p(m_U_np1[:, self.n - 3])
-            rho = 2 * m_U_np1[0, self.n - 2] - m_U_np1[0, self.n - 3]
-            m_U_np1[:, self.n - 1] = self.calc_U_i(u_Nm1, rho, p).reshape(3)
-            u_N = m_U_np1[1, self.n] / m_U_np1[0, self.n]
-            p = self.calc_p(m_U_np1[:, self.n - 1])
-            rho = m_U_np1[0, self.n - 1]
-            m_U_np1[:, self.n] = self.calc_U_i(u_N, rho, p).reshape(3)
-        else:
-            m_U_np1[:, self.n - 1] = m_U_np1[:, self.n - 2]
-            m_U_np1[:, self.n] = m_U_np1[:, self.n - 2]
+        m_U_np1[:, self.n - 1] = m_U_np1[:, self.n - 2]
+        m_U_np1[:, self.n] = m_U_np1[:, self.n - 2]
         return m_U_np1
 
     def convert_U(self, m_U):

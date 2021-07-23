@@ -4,13 +4,15 @@ import warnings
 
 
 class SWSolver:
-    def __init__(self, delta_t=0.01, n=81, to_plot=False):
+    def __init__(self, grid_x, delta_t, time_steps, to_plot=False):
         self.gamma = 1.4
+        self.R = 287.05  # Specific gas constant for air
         self.x_length = 10
-        self.n = n
+        self.n = grid_x
         self.delta_x = self.x_length / self.n
         self.delta_t = delta_t  # [s]
         self.v_x = np.arange(0, self.x_length + self.delta_x, self.delta_x)
+        self.to_plot = to_plot
 
         # Initial condition in region R
         p_r = 0.1
@@ -33,16 +35,19 @@ class SWSolver:
         self.list_U.append(m_U_0)
         m_U_n = self.calc_U_np1_by_first_order_SW(m_U_0)
         self.list_U.append(m_U_n)
-        for i in range(150):
+        for i in range(time_steps):
             m_U_np1 = self.calc_U_np1_by_first_order_SW(m_U_n)
-            self.list_U.append(m_U_np1)
-            max_diff = np.max(np.abs((m_U_np1 - m_U_n) / self.delta_t), axis=1)
-            print("{}: {}".format(i, max_diff))
-            if np.all(max_diff < 0.01):
-                break
+            self.list_U.append(self.format_u(m_U_np1))
             m_U_n = m_U_np1
         if to_plot:
             self.plot_u(self.list_U, "bla")
+
+    def format_u(self, m_u):
+        v_p = (self.gamma - 1) * (m_u[2, :] - m_u[1, :] ** 2 / (2 * m_u[0, :]))
+        v_rho = m_u[0, :]
+        v_velocity = m_u[1, :] / v_rho
+        v_temp = v_p / (self.R * v_rho)
+        return np.vstack((v_p, v_rho, v_velocity, v_temp))
 
     def calc_T(self, v_U):
         m_T = np.eye(3)
@@ -242,7 +247,8 @@ class SWSolver:
         # plt.legend(labels)
         if save_fig:
             plt.savefig('figure_{}.png'.format(fig_name), dpi=600)
-        plt.show()
+        if self.to_plot:
+            plt.show()
 
 
 if __name__ == "__main__":

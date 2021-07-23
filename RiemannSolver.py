@@ -6,7 +6,7 @@ from scipy import optimize
 
 class RiemannSolver:
 
-    def __init__(self, v_x, t, x_0=5):
+    def __init__(self, grid_x, t, x_0=5):
         """
         Solve the exact solution for the Riemannn problem for a given time.
         The solution is accessible in the internal variables: self.v_p, self.v_rho, self.v_velocity, self.v_temp
@@ -17,7 +17,8 @@ class RiemannSolver:
         self.gamma = 1.4
         self.tube_length = 10
         self.R = 287.05  # Specific gas constant for air
-        self.v_x = v_x
+        self.delta_x = self.tube_length / grid_x
+        self.v_x = np.arange(0, self.tube_length + self.delta_x, self.delta_x)
         self.x_0 = x_0
         self.t = t
 
@@ -52,6 +53,7 @@ class RiemannSolver:
 
         # Split x to regions
         self.region_l, self.region_3, self.region_2, self.region_1, self.region_r = self.split_to_regions()
+        self.v_x = np.hstack((self.region_l, self.region_3, self.region_2, self.region_1, self.region_r))
 
         # Flow properties in region 3
         self.velocity_3 = self.calc_velocity_3(self.region_3)
@@ -69,6 +71,8 @@ class RiemannSolver:
         self.v_rho = self.build_rho()
         self.v_velocity = self.build_velocity()
         self.v_temp = self.build_temp()
+
+        self.m_u = np.vstack((self.v_p, self.v_rho, self.v_velocity, self.v_temp))
 
     def plot(self, to_show=True):
         v_x = np.hstack((self.region_l, self.region_3, self.region_2, self.region_1, self.region_r))

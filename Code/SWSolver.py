@@ -4,7 +4,7 @@ import warnings
 
 
 class SWSolver:
-    def __init__(self, grid_x, delta_t, time, first_order=True, to_plot=False):
+    def __init__(self, grid_x, delta_t, time, method='SW1', to_plot=False):
         self.gamma = 1.4
         self.R = 287.05  # Specific gas constant for air
         self.x_length = 10
@@ -13,7 +13,6 @@ class SWSolver:
         self.delta_t = delta_t  # [s]
         self.v_x = np.arange(0, self.x_length + self.delta_x, self.delta_x)
         self.to_plot = to_plot
-        self.first_order = first_order
 
         # Initial condition in region R
         p_r = 0.1
@@ -30,37 +29,22 @@ class SWSolver:
         m_U_0_r = self.calc_U_i(u_r, rho_r, p_r) * np.ones([1, int(np.floor((self.n + 1)/2))])
         m_U_0 = np.hstack((m_U_0_l, m_U_0_r))
 
-<<<<<<< HEAD:SWSolver.py
         self.list_U.append(self.format_u(m_U_0))
-        if first_order:
+        if method is 'SW1':
             m_U_n = self.calc_U_np1_by_first_order_SW(m_U_0)
-        else:
+        elif method is 'SW2':
             m_U_n = self.calc_U_np1_by_second_order_SW(m_U_0)
+        else:
+            m_U_n = self.calc_U_TVD(m_U_0)
         self.list_U.append(self.format_u(m_U_n))
         for i in range(int((time - delta_t) / delta_t)):
             print('t={}'.format(2*delta_t + i*delta_t))
-            if first_order:
+            if method is 'SW1':
                 m_U_np1 = self.calc_U_np1_by_first_order_SW(m_U_n)
-            else:
+            elif method is 'SW2':
                 m_U_np1 = self.calc_U_np1_by_second_order_SW(m_U_n)
-=======
-        self.list_U.append(m_U_0)
-        # if first_order:
-        #     m_U_n = self.calc_U_np1_by_first_order_SW(m_U_0)
-        # else:
-        #     m_U_n = self.calc_U_np1_by_second_order_SW(m_U_0)
-
-        m_U_n = self.calc_U_TVD(m_U_0)
-
-        self.list_U.append(m_U_n)
-        for i in range(time_steps):
-            # if first_order:
-            #     m_U_np1 = self.calc_U_np1_by_first_order_SW(m_U_n)
-            # else:
-            #     m_U_np1 = self.calc_U_np1_by_second_order_SW(m_U_n)
-            m_U_np1 = self.calc_U_TVD(m_U_n)
-
->>>>>>> 9543817f85ee3952567a42eebe040e9995b70a61:Code/SWSolver.py
+            else:
+                m_U_np1 = self.calc_U_TVD(m_U_n)
             self.list_U.append(self.format_u(m_U_np1))
             m_U_n = m_U_np1
         if to_plot:
@@ -200,6 +184,7 @@ class SWSolver:
         '''
         Use the TVD equations to calculate U
         '''
+
         def calc_u_p_half(U_next, U, i):
             if i == self.n:
                 'First iteration'
@@ -229,12 +214,12 @@ class SWSolver:
         m_U_np1 = np.copy(m_U_n)
         for i in range(1, self.n):
             'Calculate deltaU+0.5, deltaU-0.5'
-            u_p_half = calc_u_p_half(m_U_n[:, i+1], m_U_n[:, i], i)
-            u_m_half = calc_u_m_half(m_U_n[:, i], m_U_n[:, i-1], i)
+            u_p_half = calc_u_p_half(m_U_n[:, i + 1], m_U_n[:, i], i)
+            u_m_half = calc_u_m_half(m_U_n[:, i], m_U_n[:, i - 1], i)
 
-            v_Ep1 = self.calc_E(np.array([m_U_n[:, i+1]]).T, i)
+            v_Ep1 = self.calc_E(np.array([m_U_n[:, i + 1]]).T, i)
             v_E = self.calc_E(np.array([m_U_n[:, i]]).T, i)
-            v_Em1 = self.calc_E(np.array([m_U_n[:, i-1]]).T, i)
+            v_Em1 = self.calc_E(np.array([m_U_n[:, i - 1]]).T, i)
 
             alpha_p_half = calc_alpha_m_half(m_U_n[:, i], m_U_n[:, i - 1], v_Ep1, v_E, u_p_half)
             alpha_m_half = calc_alpha_m_half(m_U_n[:, i], m_U_n[:, i - 1], v_E, v_Em1, u_m_half)
@@ -247,7 +232,6 @@ class SWSolver:
 
         m_U_np1[:, self.n] = m_U_np1[:, self.n - 1]
         return m_U_np1
-
 
     def convert_U(self, m_U):
         m_F = np.zeros((3, 1))
@@ -314,7 +298,6 @@ class SWSolver:
             plt.savefig('figure_{}.png'.format(fig_name), dpi=600)
         if self.to_plot:
             plt.show()
-
 
 
 if __name__ == "__main__":

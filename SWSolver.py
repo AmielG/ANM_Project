@@ -4,7 +4,7 @@ import warnings
 
 
 class SWSolver:
-    def __init__(self, grid_x, delta_t, time_steps, first_order=True, to_plot=False):
+    def __init__(self, grid_x, delta_t, time, first_order=True, to_plot=False):
         self.gamma = 1.4
         self.R = 287.05  # Specific gas constant for air
         self.x_length = 10
@@ -26,17 +26,18 @@ class SWSolver:
         u_l = 0
 
         self.list_U = []
-        m_U_0_l = self.calc_U_i(u_l, rho_l, p_l) * np.ones([1, int((self.n + 1)/2)])
-        m_U_0_r = self.calc_U_i(u_r, rho_r, p_r) * np.ones([1, int((self.n + 1)/2)])
+        m_U_0_l = self.calc_U_i(u_l, rho_l, p_l) * np.ones([1, int(np.ceil((self.n + 1)/2))])
+        m_U_0_r = self.calc_U_i(u_r, rho_r, p_r) * np.ones([1, int(np.floor((self.n + 1)/2))])
         m_U_0 = np.hstack((m_U_0_l, m_U_0_r))
 
-        self.list_U.append(m_U_0)
+        self.list_U.append(self.format_u(m_U_0))
         if first_order:
             m_U_n = self.calc_U_np1_by_first_order_SW(m_U_0)
         else:
             m_U_n = self.calc_U_np1_by_second_order_SW(m_U_0)
-        self.list_U.append(m_U_n)
-        for i in range(time_steps):
+        self.list_U.append(self.format_u(m_U_n))
+        for i in range(int((time - delta_t) / delta_t)):
+            print('t={}'.format(2*delta_t + i*delta_t))
             if first_order:
                 m_U_np1 = self.calc_U_np1_by_first_order_SW(m_U_n)
             else:
@@ -51,6 +52,10 @@ class SWSolver:
         v_rho = m_u[0, :]
         v_velocity = m_u[1, :] / v_rho
         v_temp = v_p / (self.R * v_rho)
+
+        c = self.delta_t / self.delta_x
+        # print('c: {}'.format(c))
+
         return np.vstack((v_p, v_rho, v_velocity, v_temp))
 
     def calc_T(self, v_U):

@@ -30,6 +30,7 @@ class SWSolver:
         m_U_0_r = self.calc_U_i(u_r, rho_r, p_r) * np.ones([1, int(np.floor((self.n + 1)/2))])
         m_U_0 = np.hstack((m_U_0_l, m_U_0_r))
 
+<<<<<<< HEAD:SWSolver.py
         self.list_U.append(self.format_u(m_U_0))
         if first_order:
             m_U_n = self.calc_U_np1_by_first_order_SW(m_U_0)
@@ -42,6 +43,24 @@ class SWSolver:
                 m_U_np1 = self.calc_U_np1_by_first_order_SW(m_U_n)
             else:
                 m_U_np1 = self.calc_U_np1_by_second_order_SW(m_U_n)
+=======
+        self.list_U.append(m_U_0)
+        # if first_order:
+        #     m_U_n = self.calc_U_np1_by_first_order_SW(m_U_0)
+        # else:
+        #     m_U_n = self.calc_U_np1_by_second_order_SW(m_U_0)
+
+        m_U_n = self.calc_U_TVD(m_U_0)
+
+        self.list_U.append(m_U_n)
+        for i in range(time_steps):
+            # if first_order:
+            #     m_U_np1 = self.calc_U_np1_by_first_order_SW(m_U_n)
+            # else:
+            #     m_U_np1 = self.calc_U_np1_by_second_order_SW(m_U_n)
+            m_U_np1 = self.calc_U_TVD(m_U_n)
+
+>>>>>>> 9543817f85ee3952567a42eebe040e9995b70a61:Code/SWSolver.py
             self.list_U.append(self.format_u(m_U_np1))
             m_U_n = m_U_np1
         if to_plot:
@@ -177,6 +196,59 @@ class SWSolver:
         m_U_np1[:, self.n] = m_U_np1[:, self.n - 2]
         return m_U_np1
 
+    def calc_U_TVD(self, m_U_n):
+        '''
+        Use the TVD equations to calculate U
+        '''
+        def calc_u_p_half(U_next, U, i):
+            if i == self.n:
+                'First iteration'
+                return U
+            else:
+                return U_next - U
+
+        def calc_u_m_half(U, U_prev, i):
+            if i == 0:
+                'First iteration'
+                return U
+            else:
+                return U - U_prev
+
+        def calc_alpha_p_half(U_next, U, E_next, E, delta_u):
+            if delta_u == 0:
+                return U
+            else:
+                return (E_next - E) / (U_next - U)
+
+        def calc_alpha_m_half(U, U_prev, E, E_prev, delta_u):
+            if delta_u.all() == 0:
+                return U
+            else:
+                return (E - E_prev) / (U - U_prev)
+
+        m_U_np1 = np.copy(m_U_n)
+        for i in range(1, self.n):
+            'Calculate deltaU+0.5, deltaU-0.5'
+            u_p_half = calc_u_p_half(m_U_n[:, i+1], m_U_n[:, i], i)
+            u_m_half = calc_u_m_half(m_U_n[:, i], m_U_n[:, i-1], i)
+
+            v_Ep1 = self.calc_E(np.array([m_U_n[:, i+1]]).T, i)
+            v_E = self.calc_E(np.array([m_U_n[:, i]]).T, i)
+            v_Em1 = self.calc_E(np.array([m_U_n[:, i-1]]).T, i)
+
+            alpha_p_half = calc_alpha_m_half(m_U_n[:, i], m_U_n[:, i - 1], v_Ep1, v_E, u_p_half)
+            alpha_m_half = calc_alpha_m_half(m_U_n[:, i], m_U_n[:, i - 1], v_E, v_Em1, u_m_half)
+
+            phi_p_half = np.abs(alpha_p_half) * u_p_half
+            phi_m_half = np.abs(alpha_m_half) * u_m_half
+
+            m_U_star = m_U_n[:, i] - (self.delta_t / 2 * self.delta_x) * (v_Ep1 - v_E)
+            m_U_np1[:, i] = m_U_n[:, i] - (self.delta_t / 2 * self.delta_x) * (phi_p_half - phi_m_half)
+
+        m_U_np1[:, self.n] = m_U_np1[:, self.n - 1]
+        return m_U_np1
+
+
     def convert_U(self, m_U):
         m_F = np.zeros((3, 1))
         for v_U in m_U.T:
@@ -242,6 +314,7 @@ class SWSolver:
             plt.savefig('figure_{}.png'.format(fig_name), dpi=600)
         if self.to_plot:
             plt.show()
+
 
 
 if __name__ == "__main__":

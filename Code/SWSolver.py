@@ -4,7 +4,7 @@ import warnings
 
 
 class SWSolver:
-    def __init__(self, grid_x, delta_t, time, method='SW1', to_plot=False):
+    def __init__(self, grid_x, delta_t, time, method='SW1', to_plot=False, epsilon=0.1):
         self.gamma = 1.4
         self.R = 287.05  # Specific gas constant for air
         self.x_length = 10
@@ -13,7 +13,7 @@ class SWSolver:
         self.delta_t = delta_t  # [s]
         self.v_x = np.arange(0, self.x_length + self.delta_x, self.delta_x)
         self.to_plot = to_plot
-
+        self.epsilon = epsilon  # 0 <= epsilon <= 0.125
         # Initial condition in region R
         p_r = 0.1
         rho_r = 0.125
@@ -35,7 +35,7 @@ class SWSolver:
         elif method is 'SW2':
             m_U_n = self.calc_U_np1_by_second_order_SW(m_U_0)
         else:
-            m_U_n = self.calc_U_TVD(m_U_0)
+            m_U_n = self.calc_U_TVD2(m_U_0)
         self.list_U.append(self.format_u(m_U_n))
         for i in range(int((time - delta_t) / delta_t)):
             print('t={}'.format(2*delta_t + i*delta_t))
@@ -44,7 +44,7 @@ class SWSolver:
             elif method is 'SW2':
                 m_U_np1 = self.calc_U_np1_by_second_order_SW(m_U_n)
             else:
-                m_U_np1 = self.calc_U_TVD(m_U_n)
+                m_U_np1 = self.calc_U_TVD2(m_U_n)
             self.list_U.append(self.format_u(m_U_np1))
             m_U_n = m_U_np1
         if to_plot:
@@ -229,6 +229,78 @@ class SWSolver:
 
             m_U_star = m_U_n[:, i] - (self.delta_t / 2 * self.delta_x) * (v_Ep1 - v_Em1)
             m_U_np1[:, i] = m_U_star + (self.delta_t / 2 * self.delta_x) * (phi_p_half - phi_m_half)
+
+        m_U_np1[:, self.n] = m_U_np1[:, self.n - 1]
+        return m_U_np1
+
+    def calc_U_TVD2(self, m_U_n):
+        '''
+        Use the secound-order TVD equations to calculate U
+        '''
+
+        def calc_alpha(U_next, U):
+            p_next = self.calc_p(U_next)
+            a_next = self.calc_sound_velocity(U_next[0], p_next)
+            v_next = U_next[1] / U_next[0]
+
+            p = self.calc_p(U)
+            a = self.calc_sound_velocity(U[0], p)
+            v = U[1] / U[0]
+            return 0.5 * np.array([v_next + v, v_next + a_next + v + a, v_next - a_next + v - a])
+
+        def calc_psi(y, epsilon):
+            psi = np.abs(y) * (np.abs(y) >= epsilon)
+            psi += ((y**2 + epsilon**2) / (2 * epsilon)) * (np.abs(y) < epsilon)
+            return psi
+
+        def calc_G(v_U_ip1, v_U_i, v_U_im1):
+            m_X_p_half_inv = (self.calc_T_inverse(v_U_ip1) + self.calc_T_inverse(v_U_i)) * 0.5
+            m_X_m_half_inv = (self.calc_T_inverse(v_U_i) + self.calc_T_inverse(v_U_im1)) * 0.5
+
+            delta_p_half = (m_X_p_half_inv @ (v_U_ip1 - v_U_i)).T
+            delta_m_half = (m_X_m_half_inv @ (v_U_i - v_U_im1)).T
+
+            v_G = np.zeros(v_U_i.shape).T
+            v_G += delta_p_half * np.logical_and(np.abs(delta_p_half) < np.abs(delta_m_half), delta_p_half * delta_m_half > 0.0)
+            v_G += delta_m_half * np.logical_and(np.abs(delta_m_half) < np.abs(delta_p_half), delta_p_half * delta_m_half > 0.0)
+            return v_G
+
+        def calc_beta(sigma, delta_half, v_G_ip1, v_G_i):
+            v_beta = np.nan_to_num((delta_half != 0) * sigma * (v_G_ip1 - v_G_i) / delta_half)
+            return v_beta
+
+        m_U_np1 = np.copy(m_U_n)
+        for i in range(2, self.n - 1):
+            v_Ep1 = self.calc_E(np.array([m_U_n[:, i + 1]]).T, i)
+            v_E = self.calc_E(np.array([m_U_n[:, i]]).T, i)
+            v_Em1 = self.calc_E(np.array([m_U_n[:, i - 1]]).T, i)
+
+            alpha_p_half = calc_alpha(m_U_n[:, i + 1], m_U_n[:, i])
+            alpha_m_half = calc_alpha(m_U_n[:, i], m_U_n[:, i - 1])
+
+            sigma_p_half = 0.5 * calc_psi(alpha_p_half, self.epsilon) + (self.delta_t / self.delta_x) * alpha_p_half **2
+            sigma_m_half = 0.5 * calc_psi(alpha_m_half, self.epsilon) + (self.delta_t / self.delta_x) * alpha_m_half **2
+
+            m_X_p_half_inv = (self.calc_T_inverse(np.array([m_U_n[:, i + 1]]).T) + np.array([m_U_n[:, i]]).T) * 0.5
+            m_X_m_half_inv = (self.calc_T_inverse(np.array([m_U_n[:, i]]).T) + np.array([m_U_n[:, i - 1]]).T) * 0.5
+
+            delta_p_half = (m_X_p_half_inv @ (np.array([m_U_n[:, i + 1]]).T - np.array([m_U_n[:, i]]).T)).T
+            delta_m_half = (m_X_m_half_inv @ (np.array([m_U_n[:, i]]).T - np.array([m_U_n[:, i - 1]]).T)).T
+
+            v_G_ip1 = calc_G(np.array([m_U_n[:, i + 2]]).T, np.array([m_U_n[:, i + 1]]).T, np.array([m_U_n[:, i]]).T)
+            v_G_i = calc_G(np.array([m_U_n[:, i + 1]]).T, np.array([m_U_n[:, i]]).T, np.array([m_U_n[:, i - 1]]).T)
+            v_G_im1 = calc_G(np.array([m_U_n[:, i]]).T, np.array([m_U_n[:, i - 1]]).T, np.array([m_U_n[:, i - 2]]).T)
+
+            beta_p_half = calc_beta(sigma_p_half, delta_p_half, v_G_ip1, v_G_i)
+            beta_m_half = calc_beta(sigma_m_half, delta_m_half, v_G_i, v_G_im1)
+
+            phi_p_half = sigma_p_half * (v_G_ip1 + v_G_i) - calc_psi(alpha_p_half + beta_p_half, self.epsilon) * delta_p_half
+            phi_m_half = sigma_m_half * (v_G_i + v_G_im1) - calc_psi(alpha_m_half + beta_m_half, self.epsilon) * delta_m_half
+
+            v_R_p_half = 0.5 * (v_Ep1 + v_E + (0.5*(self.calc_T(np.array([m_U_n[:, i + 1]]).T) + self.calc_T(np.array([m_U_n[:, i]]).T)) @ phi_p_half.T).T)
+            v_R_m_half = 0.5 * (v_Em1 + v_E + (0.5*(self.calc_T(np.array([m_U_n[:, i]]).T) + self.calc_T(np.array([m_U_n[:, i - 1]]).T)) @ phi_m_half.T).T)
+
+            m_U_np1[:, i] = m_U_n[:, i] - (self.delta_t / self.delta_x) * (v_R_p_half - v_R_m_half)
 
         m_U_np1[:, self.n] = m_U_np1[:, self.n - 1]
         return m_U_np1

@@ -44,12 +44,17 @@ if __name__ == "__main__":
 
     rs = RiemannSolver(grid_x, time)
     plot(rs.v_x, rs.m_u, time, method='Analytic solution', marker='-', figure_id=1)
-    # sw1 = SWSolver(100, 0.01, time, method='SW1')
+    # sw1 = SWSolver(grid_x, delta_t, time, method='SW1')
     # plot(sw1.v_x, sw1.list_U[-1], time, method='S-W order 1', marker='-o', figure_id=1)
-    sw2 = SWSolver(grid_x, delta_t, time, method='SW2')
-    plot(sw2.v_x, sw2.list_U[-1], time, method='S-W order 2', marker='-o', figure_id=1)
-    tvd = SWSolver(grid_x, delta_t, time, method='TVD')
-    plot(tvd.v_x, tvd.list_U[-1], time, method='TVD', marker='-o', figure_id=1)
+    # sw2 = SWSolver(grid_x, delta_t, time, method='SW2')
+    # plot(sw2.v_x, sw2.list_U[-1], time, method='S-W order 2', marker='-o', figure_id=1)
+    # tvd = SWSolver(grid_x, delta_t, time, method='TVD', epsilon=0)
+    # plot(tvd.v_x, tvd.list_U[-1], time, method='TVD epsilon=0', marker='-o', figure_id=1)
+    tvd = SWSolver(grid_x, delta_t, time, method='TVD', epsilon=0.0625)
+    plot(tvd.v_x, tvd.list_U[-1], time, method='TVD epsilon=0.0625', marker='-o', figure_id=1)
+    tvd = SWSolver(grid_x, delta_t, time, method='TVD', epsilon=0.125)
+    plot(tvd.v_x, tvd.list_U[-1], time, method='TVD epsilon=0.125', marker='-o', figure_id=1)
+
 
     plt.show()
     print("main")

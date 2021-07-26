@@ -200,16 +200,16 @@ class SWSolver:
                 return U - U_prev
 
         def calc_alpha_p_half(U_next, U, E_next, E, delta_u):
-            if delta_u == 0:
-                return U
-            else:
-                return (E_next - E) / (U_next - U)
+            alpha_p_half = U * (delta_u == 0)
+            tmp = (E_next - E) / (U_next - U) * (delta_u != 0)
+            alpha_p_half += np.nan_to_num(tmp)  # Replace nan to zero (When dividing  by zero)
+            return alpha_p_half
 
         def calc_alpha_m_half(U, U_prev, E, E_prev, delta_u):
-            if delta_u.all() == 0:
-                return U
-            else:
-                return (E - E_prev) / (U - U_prev)
+            alpha_m_half = U * (delta_u == 0)
+            tmp = (E - E_prev) / (U - U_prev) * (delta_u != 0)
+            alpha_m_half += np.nan_to_num(tmp)  # Replace nan to zero (When dividing  by zero)
+            return alpha_m_half
 
         m_U_np1 = np.copy(m_U_n)
         for i in range(1, self.n):
@@ -221,14 +221,14 @@ class SWSolver:
             v_E = self.calc_E(np.array([m_U_n[:, i]]).T, i)
             v_Em1 = self.calc_E(np.array([m_U_n[:, i - 1]]).T, i)
 
-            alpha_p_half = calc_alpha_m_half(m_U_n[:, i], m_U_n[:, i - 1], v_Ep1, v_E, u_p_half)
+            alpha_p_half = calc_alpha_p_half(m_U_n[:, i + 1], m_U_n[:, i], v_Ep1, v_E, u_p_half)
             alpha_m_half = calc_alpha_m_half(m_U_n[:, i], m_U_n[:, i - 1], v_E, v_Em1, u_m_half)
 
             phi_p_half = np.abs(alpha_p_half) * u_p_half
             phi_m_half = np.abs(alpha_m_half) * u_m_half
 
-            m_U_star = m_U_n[:, i] - (self.delta_t / 2 * self.delta_x) * (v_Ep1 - v_E)
-            m_U_np1[:, i] = m_U_n[:, i] - (self.delta_t / 2 * self.delta_x) * (phi_p_half - phi_m_half)
+            m_U_star = m_U_n[:, i] - (self.delta_t / 2 * self.delta_x) * (v_Ep1 - v_Em1)
+            m_U_np1[:, i] = m_U_star + (self.delta_t / 2 * self.delta_x) * (phi_p_half - phi_m_half)
 
         m_U_np1[:, self.n] = m_U_np1[:, self.n - 1]
         return m_U_np1

@@ -50,8 +50,8 @@ if __name__ == "__main__":
     plot(sw2.v_x, sw2.list_U[-1], time, method='S-W order 2', marker='-o', figure_id=1)
     # tvd = SWSolver(grid_x, delta_t, time, method='TVD', epsilon=0)
     # plot(tvd.v_x, tvd.list_U[-1], time, method='TVD epsilon=0', marker='-o', figure_id=1)
-    tvd = SWSolver(grid_x, delta_t, time, method='TVD', epsilon=0.06)
-    plot(tvd.v_x, tvd.list_U[-1], time, method='TVD epsilon=0.06', marker='-o', figure_id=1)
+    tvd = SWSolver(grid_x, delta_t, time, method='TVD', epsilon=0.1)
+    plot(tvd.v_x, tvd.list_U[-1], time, method='TVD epsilon=0.1', marker='-o', figure_id=1)
     # tvd = SWSolver(grid_x, delta_t, time, method='TVD', epsilon=0.125)
     # plot(tvd.v_x, tvd.list_U[-1], time, method='TVD epsilon=0.125', marker='-o', figure_id=1)
 

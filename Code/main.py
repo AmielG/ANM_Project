@@ -38,7 +38,7 @@ def plot(v_x, m_u, time, method='Steger-Warming', marker='-', figure_id=0):
 
 
 if __name__ == "__main__":
-    time = 0.5
+    time = 1.5
     delta_t = 0.01
     grid_x = 100
 
@@ -46,14 +46,14 @@ if __name__ == "__main__":
     plot(rs.v_x, rs.m_u, time, method='Analytic solution', marker='-', figure_id=1)
     # sw1 = SWSolver(grid_x, delta_t, time, method='SW1')
     # plot(sw1.v_x, sw1.list_U[-1], time, method='S-W order 1', marker='-o', figure_id=1)
-    # sw2 = SWSolver(grid_x, delta_t, time, method='SW2')
-    # plot(sw2.v_x, sw2.list_U[-1], time, method='S-W order 2', marker='-o', figure_id=1)
+    sw2 = SWSolver(grid_x, delta_t, time, method='SW2')
+    plot(sw2.v_x, sw2.list_U[-1], time, method='S-W order 2', marker='-o', figure_id=1)
     # tvd = SWSolver(grid_x, delta_t, time, method='TVD', epsilon=0)
     # plot(tvd.v_x, tvd.list_U[-1], time, method='TVD epsilon=0', marker='-o', figure_id=1)
-    tvd = SWSolver(grid_x, delta_t, time, method='TVD', epsilon=0.0625)
-    plot(tvd.v_x, tvd.list_U[-1], time, method='TVD epsilon=0.0625', marker='-o', figure_id=1)
-    tvd = SWSolver(grid_x, delta_t, time, method='TVD', epsilon=0.125)
-    plot(tvd.v_x, tvd.list_U[-1], time, method='TVD epsilon=0.125', marker='-o', figure_id=1)
+    tvd = SWSolver(grid_x, delta_t, time, method='TVD', epsilon=0.06)
+    plot(tvd.v_x, tvd.list_U[-1], time, method='TVD epsilon=0.06', marker='-o', figure_id=1)
+    # tvd = SWSolver(grid_x, delta_t, time, method='TVD', epsilon=0.125)
+    # plot(tvd.v_x, tvd.list_U[-1], time, method='TVD epsilon=0.125', marker='-o', figure_id=1)
 
 
     plt.show()

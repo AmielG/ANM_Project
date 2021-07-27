@@ -266,11 +266,11 @@ class SWSolver:
             return v_G
 
         def calc_beta(sigma, delta_half, v_G_ip1, v_G_i):
-            v_beta = np.nan_to_num((delta_half != 0) * sigma * (v_G_ip1 - v_G_i) / delta_half)
-            return v_beta
+            v_beta = sigma * (v_G_ip1 - v_G_i) / delta_half
+            return np.nan_to_num(v_beta)  # Convert nan value (due to zero divisiontion) to zero
 
         m_U_np1 = np.copy(m_U_n)
-        for i in range(2, self.n - 1):
+        for i in range(2, self.n - 2):
             v_Ep1 = self.calc_E(np.array([m_U_n[:, i + 1]]).T, i)
             v_E = self.calc_E(np.array([m_U_n[:, i]]).T, i)
             v_Em1 = self.calc_E(np.array([m_U_n[:, i - 1]]).T, i)
@@ -281,8 +281,8 @@ class SWSolver:
             sigma_p_half = 0.5 * calc_psi(alpha_p_half, self.epsilon) + (self.delta_t / self.delta_x) * alpha_p_half **2
             sigma_m_half = 0.5 * calc_psi(alpha_m_half, self.epsilon) + (self.delta_t / self.delta_x) * alpha_m_half **2
 
-            m_X_p_half_inv = (self.calc_T_inverse(np.array([m_U_n[:, i + 1]]).T) + np.array([m_U_n[:, i]]).T) * 0.5
-            m_X_m_half_inv = (self.calc_T_inverse(np.array([m_U_n[:, i]]).T) + np.array([m_U_n[:, i - 1]]).T) * 0.5
+            m_X_p_half_inv = (self.calc_T_inverse(np.array([m_U_n[:, i + 1]]).T) + self.calc_T_inverse(np.array([m_U_n[:, i]]).T)) * 0.5
+            m_X_m_half_inv = (self.calc_T_inverse(np.array([m_U_n[:, i]]).T) + self.calc_T_inverse(np.array([m_U_n[:, i - 1]]).T)) * 0.5
 
             delta_p_half = (m_X_p_half_inv @ (np.array([m_U_n[:, i + 1]]).T - np.array([m_U_n[:, i]]).T)).T
             delta_m_half = (m_X_m_half_inv @ (np.array([m_U_n[:, i]]).T - np.array([m_U_n[:, i - 1]]).T)).T
